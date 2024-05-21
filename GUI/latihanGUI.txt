@@ -1,0 +1,234 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.Timer;
+
+public class TampilanGui extends JFrame {
+    private Deque<String> deques = new LinkedList<>();
+    private List<String> completedQueue = new ArrayList<>();
+    private JTextField namaField;
+    private JTextArea antreanArea;
+    private JTextArea processedArea;
+    private JTextArea completedArea;
+    private JLabel currentPatientLabel;
+    private Timer timer;
+    private long startTime;
+
+    public TampilanGui() {
+        // Set up the frame
+        setTitle("Sistem Antrean RS");
+        setSize(700, 500);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        // Create login panel
+        JPanel loginPanel = new JPanel(new GridBagLayout());
+        JLabel userLabel = new JLabel("Username:");
+        JTextField userField = new JTextField(20);
+        JLabel passLabel = new JLabel("Password:");
+        JPasswordField passField = new JPasswordField(20);
+        JButton loginButton = new JButton("Login");
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        loginPanel.add(userLabel, gbc);
+        gbc.gridx = 1;
+        loginPanel.add(userField, gbc);
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        loginPanel.add(passLabel, gbc);
+        gbc.gridx = 1;
+        loginPanel.add(passField, gbc);
+        gbc.gridx = 1;
+        gbc.gridy = 2;
+        loginPanel.add(loginButton, gbc);
+
+        add(loginPanel, BorderLayout.CENTER);
+
+        // Add login button listener
+        loginButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String username = userField.getText();
+                String password = new String(passField.getPassword());
+                if (username.equals("admin") && password.equals("password")) {
+                    remove(loginPanel);
+                    initializeMainPanel();
+                    revalidate();
+                    repaint();
+                } else {
+                    JOptionPane.showMessageDialog(TampilanGui.this, "Login gagal! Username atau password salah.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+    }
+
+    private void initializeMainPanel() {
+        // Create main panel components
+        JPanel inputPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+
+        JLabel nameLabel = new JLabel("Masukkan nama:");
+        inputPanel.add(nameLabel, gbc);
+
+        namaField = new JTextField(20);
+        gbc.gridx = 1;
+        inputPanel.add(namaField, gbc);
+
+        JButton addButton = new JButton("Tambah");
+        gbc.gridx = 2;
+        inputPanel.add(addButton, gbc);
+
+        // Create bottom panel for finish and clear buttons
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.setLayout(new FlowLayout());
+
+        JButton processButton = new JButton("Proses Antrian");
+        bottomPanel.add(processButton);
+
+        JButton resetButton = new JButton("Reset Antrian");
+        bottomPanel.add(resetButton);
+
+        // Create output area
+        antreanArea = new JTextArea(10, 30);
+        antreanArea.setEditable(false);
+        JScrollPane scrollPane1 = new JScrollPane(antreanArea);
+
+        processedArea = new JTextArea(5, 30);
+        processedArea.setEditable(false);
+        JScrollPane scrollPane2 = new JScrollPane(processedArea);
+
+        completedArea = new JTextArea(5, 30);
+        completedArea.setEditable(false);
+        JScrollPane scrollPane3 = new JScrollPane(completedArea);
+
+        currentPatientLabel = new JLabel("Urutan Antrean : ");
+        currentPatientLabel = new JLabel("Antrian sedang diproses: ");
+        JPanel statusPanel = new JPanel(new BorderLayout());
+        statusPanel.add(currentPatientLabel, BorderLayout.NORTH);
+        statusPanel.add(scrollPane2, BorderLayout.CENTER);
+        statusPanel.add(scrollPane3, BorderLayout.SOUTH);
+
+        // Add panels to frame
+        add(inputPanel, BorderLayout.NORTH);
+        add(scrollPane1, BorderLayout.WEST);
+        add(statusPanel, BorderLayout.CENTER);
+        add(bottomPanel, BorderLayout.SOUTH);
+
+        // Add button listeners
+        addButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                tambahAntrean();
+            }
+        });
+
+        processButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                prosesAntrean();
+            }
+        });
+
+        resetButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                resetAntrean();
+            }
+        });
+    }
+
+    private void tambahAntrean() {
+        String pasien = namaField.getText().trim();
+        if (pasien.isEmpty()) {
+            JOptionPane.showMessageDialog(TampilanGui.this, "Nama tidak boleh kosong.", "Kesalahan Input", JOptionPane.ERROR_MESSAGE);
+        } else {
+            LocalDateTime now = LocalDateTime.now();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+            String timestamp = now.format(formatter);
+            deques.offer(pasien + " (Masuk: " + timestamp + ")");
+            namaField.setText("");
+            displayAntrean();
+        }
+    }
+
+    private void prosesAntrean() {
+        if (deques.isEmpty()) {
+            JOptionPane.showMessageDialog(TampilanGui.this, "Tidak ada antrian untuk diproses.", "Informasi", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        String pasien = deques.poll();
+        if (pasien != null) {
+            currentPatientLabel.setText("Antrian sedang diproses: " + pasien);
+            processedArea.setText(pasien);
+
+            // Simulate processing time with a timer
+            startTime = System.currentTimeMillis();
+            timer = new Timer(3000, new ActionListener() { // Simulate 3 seconds processing time
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    LocalDateTime now = LocalDateTime.now();
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+                    String timestamp = now.format(formatter);
+                    completedQueue.add(pasien + " (Selesai: " + timestamp + ")");
+                    processedArea.setText("");
+                    currentPatientLabel.setText("Antrian sedang diproses: ");
+                    displayCompleted();
+                    displayAntrean(); // Update the queue display
+                    timer.stop();
+                }
+            });
+            timer.start();
+        }
+    }
+
+    private void resetAntrean() {
+        deques.clear();
+        completedQueue.clear();
+        antreanArea.setText("");
+        processedArea.setText("");
+        completedArea.setText("");
+        currentPatientLabel.setText("Antrian sedang diproses: ");
+        if (timer != null) {
+            timer.stop();
+        }
+    }
+
+    private void displayAntrean() {
+        antreanArea.setText("Daftar Antrian:\n");
+        int antrean = 1;
+        for (String next : deques) {
+            antreanArea.append(antrean + ". " + next + "\n");
+            antrean++;
+        }
+    }
+
+    private void displayCompleted() {
+        completedArea.setText("Antrian yang sudah selesai:\n");
+        for (String pasien : completedQueue) {
+            completedArea.append(pasien + "\n");
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new TampilanGui().setVisible(true);
+            }
+        });
+    }
+}
